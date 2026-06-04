@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Tracker</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; min-height: 100vh; }
+
+  .header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .date-badge { font-size: 13px; color: #666; background: #f0f0f0; padding: 4px 10px; border-radius: 20px; }
+
+  .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+
+  .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 20px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; }
+
+  /* Log Form */
+  .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .form-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 500; color: #666; }
+  .form-group input, .form-group textarea, .form-group select {
+    border: 1px solid #ddd; border-radius: 8px; padding: 9px 12px;
+    font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color .15s; background: #fafafa; color: #1d1d1f;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #0071e3; background: #fff; }
+  .form-group textarea { resize: none; height: 68px; }
+
+  .quick-times { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .quick-times span { font-size: 12px; font-weight: 500; color: #666; }
+  .qt-btn { background: #f0f0f0; border: none; border-radius: 6px; padding: 5px 11px; font-size: 13px; cursor: pointer; font-family: inherit; color: #333; transition: background .12s; }
+  .qt-btn:hover { background: #0071e3; color: #fff; }
+
+  .log-btn { width: 100%; background: #0071e3; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .12s; }
+  .log-btn:hover { background: #0077ed; }
+  .log-btn:active { background: #005bbf; }
+
+  /* Day tabs */
+  .day-tabs { display: flex; gap: 5px; margin-bottom: 16px; flex-wrap: wrap; }
+  .day-tab {
+    background: #f0f0f0; border: none; border-radius: 8px; padding: 6px 10px;
+    font-size: 12px; cursor: pointer; font-family: inherit; color: #555;
+    transition: background .12s; display: flex; flex-direction: column;
+    align-items: center; gap: 1px; min-width: 70px;
+  }
+  .day-tab .tab-day { font-weight: 600; font-size: 13px; }
+  .day-tab .tab-date { font-size: 10px; color: #999; }
+  .day-tab.active { background: #0071e3; color: #fff; font-weight: 600; }
+  .day-tab.active .tab-date { color: rgba(255,255,255,.75); }
+  .day-tab.today-tab { border: 2px solid #0071e3; background: #f0f7ff; }
+  .day-tab.today-tab.active { border-color: transparent; background: #0071e3; }
+
+  /* Entries */
+  .entries-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .total-badge { font-size: 13px; font-weight: 600; color: #0071e3; background: #e8f0fe; padding: 4px 10px; border-radius: 20px; }
+  .empty-state { text-align: center; color: #bbb; padding: 24px 0; font-size: 14px; }
+
+  .entry { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid #f0f0f0; }
+  .entry:last-child { border-bottom: none; }
+
+  /* Inline editable time badge */
+  .entry-time {
+    background: #f0f7ff; color: #0071e3; font-weight: 700; font-size: 13px;
+    padding: 4px 9px; border-radius: 6px; white-space: nowrap; min-width: 54px;
+    text-align: center; cursor: pointer; user-select: none; transition: background .12s;
+  }
+  .entry-time:hover { background: #daeeff; }
+  .entry-time.editing {
+    background: #fff; border: 2px solid #0071e3; padding: 2px 7px;
+    cursor: text; outline: none;
+  }
+  .entry-time-input {
+    width: 64px; border: 2px solid #0071e3; border-radius: 6px; padding: 3px 7px;
+    font-size: 13px; font-weight: 700; color: #0071e3; background: #fff;
+    font-family: inherit; outline: none; text-align: center;
+  }
+
+  .entry-body { flex: 1; }
+  .entry-customer { font-weight: 600; font-size: 14px; }
+  .entry-comment { font-size: 13px; color: #666; margin-top: 2px; }
+  .entry-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .entry-time-logged { font-size: 11px; color: #bbb; }
+
+  .cat-badge {
+    font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+    letter-spacing: .2px;
+  }
+  .cat-customer          { background: #e6f4ea; color: #2d7a4f; }
+  .cat-internal-project  { background: #e8f4fd; color: #0369a1; }
+  .cat-enablement        { background: #fff3e0; color: #bf6900; }
+  .cat-nonproductive     { background: #f3e8ff; color: #7c3aed; }
+  .cat-presales          { background: #fce7f3; color: #9d174d; }
+  .cat-sme               { background: #fef3c7; color: #92400e; }
+  .cat-ooo               { background: #f1f5f9; color: #64748b; }
+
+  /* Buckets */
+  .bucket-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f5f5f5; }
+  .bucket-row:last-child { border-bottom: none; }
+  .bucket-bar-wrap { flex: 1; background: #f0f0f0; border-radius: 6px; height: 8px; overflow: hidden; }
+  .bucket-bar { height: 100%; border-radius: 6px; transition: width .4s ease; }
+  .bucket-bar.productive   { background: #34c759; }
+  .bucket-bar.nonproductive { background: #a78bfa; }
+  .bucket-bar.ooo          { background: #cbd5e1; }
+  .bucket-time { font-size: 13px; font-weight: 700; color: #555; min-width: 40px; text-align: right; }
+
+  .entry-delete { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 2px 4px; line-height: 1; transition: color .12s; flex-shrink: 0; }
+  .entry-delete:hover { color: #e34850; }
+
+  /* Summary */
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-customer { font-size: 14px; font-weight: 500; }
+  .summary-time { font-size: 14px; font-weight: 700; color: #0071e3; }
+
+  /* Utilization */
+  .util-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+  .util-title { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+  .util-bar-wrap { background: #f0f0f0; border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 10px; }
+  .util-bar { height: 100%; border-radius: 8px; transition: width .4s ease; background: linear-gradient(90deg, #34c759, #30b04f); }
+  .util-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+  .util-stat { display: flex; flex-direction: column; gap: 2px; }
+  .util-stat-label { font-size: 11px; color: #999; font-weight: 500; text-transform: uppercase; letter-spacing: .3px; }
+  .util-stat-value { font-size: 20px; font-weight: 700; }
+  .util-stat-value.productive { color: #34c759; }
+  .util-stat-value.nonproductive { color: #7c3aed; }
+  .util-stat-value.total { color: #0071e3; }
+  .util-stat-value.pct { color: #1d1d1f; }
+
+  /* Actions */
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .clear-btn { flex: 1; background: #fff0f0; color: #c00; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background .12s; }
+  .clear-btn:hover { background: #ffe0e0; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1d1d1f; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⏱ Time Tracker</h1>
+  <span class="date-badge" id="dateDisplay"></span>
+</div>
+
+<div class="container">
+
+  <!-- LOG FORM -->
+  <div class="card">
+    <div class="card-title">Log Time</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1.2">
+        <label>Customer / Account</label>
+        <input type="text" id="customerInput" placeholder="e.g. Acme Corp" list="customerSuggestions" autocomplete="off">
+        <datalist id="customerSuggestions"></datalist>
+      </div>
+      <div class="form-group" style="flex:.6">
+        <label>Time Spent</label>
+        <input type="text" id="timeInput" placeholder="e.g. 15m, 1h 30m">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="categoryInput">
+          <option value="customer">Customer</option>
+          <option value="internal_project">Internal Projects</option>
+          <option value="self_enablement">Self Enablement</option>
+          <option value="internal_admin">Internal Admin</option>
+          <option value="presales">Pre-Sales Involvement</option>
+          <option value="sme">Subject Matter Expert</option>
+          <option value="ooo">Out of Office</option>
+        </select>
+      </div>
+    </div>
+    <div class="quick-times">
+      <span>Quick:</span>
+      <button class="qt-btn" onclick="setTime('15m')">15m</button>
+      <button class="qt-btn" onclick="setTime('30m')">30m</button>
+      <button class="qt-btn" onclick="setTime('45m')">45m</button>
+      <button class="qt-btn" onclick="setTime('1h')">1h</button>
+      <button class="qt-btn" onclick="setTime('1h 30m')">1h 30m</button>
+      <button class="qt-btn" onclick="setTime('2h')">2h</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Comment / What you worked on</label>
+      <textarea id="commentInput" placeholder="e.g. Reviewed architecture proposal, follow-up call re: integration"></textarea>
+    </div>
+    <button class="log-btn" onclick="logEntry()">Log Time</button>
+  </div>
+
+  <!-- ENTRIES -->
+  <div class="card">
+    <div class="entries-header">
+      <div class="card-title" id="entriesTitle" style="margin-bottom:0">Today's Entries</div>
+      <span class="total-badge" id="totalDisplay">0m</span>
+    </div>
+    <div class="day-tabs" style="margin-top:12px" id="dayTabsContainer"></div>
+    <div id="entriesList"><div class="empty-state">No entries yet — log your first task above.</div></div>
+  </div>
+
+  <!-- SUMMARY + UTILIZATION -->
+  <div class="card">
+    <div class="card-title" id="summaryTitle">End-of-Day Summary</div>
+    <div id="summaryList"><div class="empty-state" style="padding:8px 0">Log entries to see summary.</div></div>
+
+    <div class="util-section">
+      <div class="util-title">Productive Utilization</div>
+      <div class="util-bar-wrap"><div class="util-bar" id="utilBar" style="width:0%"></div></div>
+      <div class="util-stats">
+        <div class="util-stat">
+          <span class="util-stat-label">Utilization</span>
+          <span class="util-stat-value pct" id="utilPct">—</span>
+        </div>
+        <div class="util-stat">
+          <span class="util-stat-label">Productive</span>
+          <span class="util-stat-value productive" id="utilProd">0m</span>
+        </div>
+        <div class="util-stat">
+          <span class="util-stat-label">Non-Productive</span>
+          <span class="util-stat-value nonproductive" id="utilNon">0m</span>
+        </div>
+        <div class="util-stat">
+          <span class="util-stat-label">Available Hours</span>
+          <span class="util-stat-value total" id="utilTotal">0m</span>
+        </div>
+        <div class="util-stat" id="utilOOO" style="display:none">
+          <span class="util-stat-label">OOO (excluded)</span>
+          <span class="util-stat-value" style="color:#94a3b8" id="utilOOOVal">0m</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="util-section">
+      <div class="util-title">Buckets</div>
+      <div id="bucketsList"><div class="empty-state" style="padding:8px 0">No entries yet.</div></div>
+    </div>
+
+    <div class="actions">
+      <button class="clear-btn" onclick="clearDay()">Clear This Day's Entries</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_KEY = 'timetracker_entries_v3';
+  let currentDayOffset = 0; // offset from today in days
+
+  // ── Work week helpers ────────────────────────────────────────────────────
+
+  // Returns an array of {dayName, dateStr, offset} for Mon–Fri of the current week,
+  // where offset = days back from today (negative means future days this week).
+  function getWorkWeekTabs() {
+    const today = new Date();
+    const todayDow = today.getDay(); // 0=Sun,1=Mon,...,6=Sat
+    // Find Monday of this week (if today is Sun, go back 6 days; if Mon, 0, etc.)
+    const daysToMon = todayDow === 0 ? -6 : 1 - todayDow;
+    const tabs = [];
+    const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + daysToMon + i);
+      const offset = Math.round((today - d) / 86400000); // positive = past
+      const dateStr = d.toLocaleDateString([], {month:'short', day:'numeric'});
+      const isoKey  = d.toISOString().slice(0,10);
+      tabs.push({ dayName: dayNames[i], dateStr, offset, isoKey, isToday: offset === 0 });
+    }
+    return tabs;
+  }
+
+  function getKeyByOffset(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() - offset);
+    return d.toISOString().slice(0,10);
+  }
+
+  // ── Storage ──────────────────────────────────────────────────────────────
+
+  function getTodayKey(offset = 0) {
+    return getKeyByOffset(offset);
+  }
+
+  function loadAll() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+  }
+
+  function saveAll(all) {
+    // Prune keys older than 14 days
+    const cutoff = getTodayKey(14);
+    Object.keys(all).forEach(k => { if (k < cutoff) delete all[k]; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  }
+
+  function getEntries(offset = 0) {
+    return loadAll()[getTodayKey(offset)] || [];
+  }
+
+  function saveEntries(entries, offset = 0) {
+    const all = loadAll();
+    all[getTodayKey(offset)] = entries;
+    saveAll(all);
+  }
+
+  // ── Time parsing ─────────────────────────────────────────────────────────
+
+  function parseMinutes(str) {
+    str = String(str).trim().toLowerCase();
+    let total = 0;
+    const h = str.match(/(\d+)\s*h/);
+    const m = str.match(/(\d+)\s*m/);
+    if (h) total += parseInt(h[1]) * 60;
+    if (m) total += parseInt(m[1]);
+    if (!h && !m) { const n = parseInt(str); if (!isNaN(n)) total = n; }
+    return total;
+  }
+
+  function formatMinutes(mins) {
+    if (mins <= 0) return '0m';
+    if (mins < 60) return mins + 'm';
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return m === 0 ? h + 'h' : h + 'h ' + m + 'm';
+  }
+
+  function setTime(val) {
+    document.getElementById('timeInput').value = val;
+    document.getElementById('timeInput').focus();
+  }
+
+  // ── Log entry ────────────────────────────────────────────────────────────
+
+  function logEntry() {
+    const customer = document.getElementById('customerInput').value.trim();
+    const timeStr  = document.getElementById('timeInput').value.trim();
+    const comment  = document.getElementById('commentInput').value.trim();
+    const category = document.getElementById('categoryInput').value;
+    if (!customer) { showToast('Enter a customer name'); return; }
+    if (!timeStr)  { showToast('Enter time spent'); return; }
+    const mins = parseMinutes(timeStr);
+    if (mins <= 0) { showToast('Invalid time format'); return; }
+
+    const entries = getEntries(0);
+    entries.unshift({ id: Date.now(), customer, mins, comment, category,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+    saveEntries(entries, 0);
+
+    document.getElementById('customerInput').value = '';
+    document.getElementById('timeInput').value = '';
+    document.getElementById('commentInput').value = '';
+    document.getElementById('customerInput').focus();
+
+    if (currentDayOffset !== 0) { currentDayOffset = 0; updateTabStyles(); }
+    render();
+    showToast('✓ Logged ' + formatMinutes(mins) + ' for ' + customer);
+  }
+
+  // ── Delete entry ─────────────────────────────────────────────────────────
+
+  function deleteEntry(id) {
+    saveEntries(getEntries(currentDayOffset).filter(e => e.id !== id), currentDayOffset);
+    render();
+  }
+
+  // ── Inline time edit ─────────────────────────────────────────────────────
+
+  function startEditTime(id) {
+    const badge = document.querySelector(`[data-id="${id}"] .entry-time`);
+    if (!badge) return;
+    const entry = getEntries(currentDayOffset).find(e => e.id === id);
+    if (!entry) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'entry-time-input';
+    input.value = formatMinutes(entry.mins);
+    input.title = 'Edit time, then press Enter';
+
+    badge.replaceWith(input);
+    input.select();
+
+    function commit() {
+      const mins = parseMinutes(input.value);
+      if (mins > 0) {
+        const entries = getEntries(currentDayOffset).map(e => e.id === id ? {...e, mins} : e);
+        saveEntries(entries, currentDayOffset);
+      }
+      render();
+    }
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') render();
+    });
+    input.addEventListener('blur', commit);
+  }
+
+  // ── Day switching ────────────────────────────────────────────────────────
+
+  function switchDay(offset) {
+    currentDayOffset = offset;
+    renderTabs();
+    render();
+  }
+
+  function renderTabs() {
+    const tabs = getWorkWeekTabs();
+    const container = document.getElementById('dayTabsContainer');
+    container.innerHTML = tabs.map(t => `
+      <button class="day-tab${t.isToday ? ' today-tab' : ''}${t.offset === currentDayOffset ? ' active' : ''}"
+              onclick="switchDay(${t.offset})">
+        <span class="tab-day">${t.dayName}</span>
+        <span class="tab-date">${t.dateStr}</span>
+      </button>
+    `).join('');
+
+    // Update section titles
+    const activeTab = tabs.find(t => t.offset === currentDayOffset);
+    const dayLabel = activeTab ? activeTab.dayName : 'Day';
+    document.getElementById('entriesTitle').textContent = activeTab?.isToday ? "Today's Entries" : dayLabel + "'s Entries";
+    document.getElementById('summaryTitle').textContent  = activeTab?.isToday ? 'End-of-Day Summary' : dayLabel + ' Summary';
+  }
+
+  // ── Category helpers ─────────────────────────────────────────────────────
+
+  const CATS = {
+    customer:         { label: 'Customer',               productive: true,  ooo: false, cls: 'cat-customer' },
+    internal_project: { label: 'Internal Projects',      productive: true,  ooo: false, cls: 'cat-internal-project' },
+    self_enablement:  { label: 'Self Enablement',        productive: true,  ooo: false, cls: 'cat-enablement' },
+    internal_admin:   { label: 'Internal Admin',         productive: false, ooo: false, cls: 'cat-nonproductive' },
+    presales:         { label: 'Pre-Sales Involvement',  productive: false, ooo: false, cls: 'cat-presales' },
+    sme:              { label: 'Subject Matter Expert',  productive: false, ooo: false, cls: 'cat-sme' },
+    ooo:              { label: 'Out of Office',          productive: false, ooo: true,  cls: 'cat-ooo' },
+  };
+
+  function catInfo(cat) { return CATS[cat] || CATS.customer; }
+  function isProductive(cat) { return catInfo(cat).productive; }
+  function isOOO(cat) { return catInfo(cat).ooo; }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
+  function render() {
+    const entries = getEntries(currentDayOffset);
+
+    // ── Entries list
+    const list = document.getElementById('entriesList');
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="empty-state">No entries for this day.</div>';
+    } else {
+      list.innerHTML = entries.map(e => `
+        <div class="entry" data-id="${e.id}">
+          <div class="entry-time" onclick="startEditTime(${e.id})" title="Click to edit time">${escHtml(formatMinutes(e.mins))}</div>
+          <div class="entry-body">
+            <div class="entry-customer">${escHtml(e.customer)}</div>
+            ${e.comment ? `<div class="entry-comment">${escHtml(e.comment)}</div>` : ''}
+            <div class="entry-meta">
+              <span class="cat-badge ${catInfo(e.category).cls}">${catInfo(e.category).label}</span>
+              <span class="entry-time-logged">${e.time || ''}</span>
+            </div>
+          </div>
+          <button class="entry-delete" onclick="deleteEntry(${e.id})" title="Delete">×</button>
+        </div>
+      `).join('');
+    }
+
+    // Total
+    const total = entries.reduce((s, e) => s + e.mins, 0);
+    document.getElementById('totalDisplay').textContent = formatMinutes(total);
+
+    // ── Summary by customer
+    const byCustomer = {};
+    entries.forEach(e => { byCustomer[e.customer] = (byCustomer[e.customer] || 0) + e.mins; });
+    const summaryEl = document.getElementById('summaryList');
+    const custEntries = Object.entries(byCustomer).sort((a, b) => b[1] - a[1]);
+    if (custEntries.length === 0) {
+      summaryEl.innerHTML = '<div class="empty-state" style="padding:8px 0">Log entries to see summary.</div>';
+    } else {
+      summaryEl.innerHTML = custEntries.map(([c, m]) => `
+        <div class="summary-row">
+          <span class="summary-customer">${escHtml(c)}</span>
+          <span class="summary-time">${formatMinutes(m)}</span>
+        </div>
+      `).join('');
+    }
+
+    // ── Utilization (OOO excluded from denominator)
+    const oooMins  = entries.filter(e => isOOO(e.category)).reduce((s, e) => s + e.mins, 0);
+    const prodMins = entries.filter(e => isProductive(e.category)).reduce((s, e) => s + e.mins, 0);
+    const nonMins  = entries.filter(e => !isProductive(e.category) && !isOOO(e.category)).reduce((s, e) => s + e.mins, 0);
+    const denominator = total - oooMins;
+    const pct = denominator > 0 ? Math.round((prodMins / denominator) * 100) : 0;
+    document.getElementById('utilBar').style.width = Math.min(pct, 100) + '%';
+    document.getElementById('utilPct').textContent  = denominator > 0 ? pct + '%' : '—';
+    document.getElementById('utilProd').textContent  = formatMinutes(prodMins);
+    document.getElementById('utilNon').textContent   = formatMinutes(nonMins);
+    document.getElementById('utilTotal').textContent = formatMinutes(denominator);
+    document.getElementById('utilOOO').style.display = oooMins > 0 ? 'flex' : 'none';
+    document.getElementById('utilOOOVal').textContent = formatMinutes(oooMins);
+
+    // ── Buckets
+    const bucketsEl = document.getElementById('bucketsList');
+    const bucketTotals = {};
+    entries.forEach(e => { bucketTotals[e.category] = (bucketTotals[e.category] || 0) + e.mins; });
+    if (Object.keys(bucketTotals).length === 0) {
+      bucketsEl.innerHTML = '<div class="empty-state" style="padding:8px 0">No entries yet.</div>';
+    } else {
+      bucketsEl.innerHTML = Object.keys(CATS)
+        .filter(k => bucketTotals[k])
+        .map(k => {
+          const info = CATS[k];
+          return `<div class="bucket-row">
+            <span class="cat-badge ${info.cls}" style="font-size:12px;padding:3px 9px">${info.label}</span>
+            <div class="bucket-bar-wrap">
+              <div class="bucket-bar ${info.productive ? 'productive' : (info.ooo ? 'ooo' : 'nonproductive')}"
+                   style="width:${denominator > 0 ? Math.min(100, Math.round((bucketTotals[k]/denominator)*100)) : 0}%"></div>
+            </div>
+            <span class="bucket-time">${formatMinutes(bucketTotals[k])}</span>
+          </div>`;
+        }).join('');
+    }
+
+    // ── Customer suggestions
+    const allEntries = Object.values(loadAll()).flat();
+    const names = [...new Set(allEntries.map(e => e.customer))];
+    document.getElementById('customerSuggestions').innerHTML = names.map(n => `<option value="${escHtml(n)}">`).join('');
+
+    document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+
+    renderTabs();
+  }
+
+  function clearDay() {
+    if (!confirm('Clear all entries for this day?')) return;
+    saveEntries([], currentDayOffset);
+    render();
+    showToast('Cleared entries');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) logEntry(); });
+
+  // Start on today's tab
+  currentDayOffset = 0;
+  render();
+</script>
+</body>
+</html>

@@ -278,7 +278,7 @@
   function getKeyByOffset(offset) {
     const d = new Date();
     d.setDate(d.getDate() - offset);
-    return d.toISOString().slice(0,10);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   // ── Storage ──────────────────────────────────────────────────────────────
@@ -345,19 +345,21 @@
     const mins = parseMinutes(timeStr);
     if (mins <= 0) { showToast('Invalid time format'); return; }
 
- const entries = getEntries(currentDayOffset);
-entries.unshift({ id: Date.now(), customer, mins, comment, category,
-  time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-saveEntries(entries, currentDayOffset);
-    
+    const entries = getEntries(currentDayOffset);
+    entries.unshift({ id: Date.now(), customer, mins, comment, category,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+    saveEntries(entries, currentDayOffset);
+
     document.getElementById('customerInput').value = '';
     document.getElementById('timeInput').value = '';
     document.getElementById('commentInput').value = '';
     document.getElementById('customerInput').focus();
 
-    
+    const tabs = getWorkWeekTabs();
+    const activeTab = tabs.find(t => t.offset === currentDayOffset);
+    const dayLabel = activeTab?.isToday ? 'today' : (activeTab?.dayName || 'selected day');
     render();
-    showToast('✓ Logged ' + formatMinutes(mins) + ' for ' + customer);
+    showToast('✓ Logged ' + formatMinutes(mins) + ' for ' + customer + ' on ' + dayLabel);
   }
 
   // ── Delete entry ─────────────────────────────────────────────────────────
@@ -531,6 +533,12 @@ saveEntries(entries, currentDayOffset);
     document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
 
     renderTabs();
+
+    // Update log button label to reflect active day
+    const tabs2 = getWorkWeekTabs();
+    const activeTab2 = tabs2.find(t => t.offset === currentDayOffset);
+    const btnLabel = activeTab2?.isToday ? 'Log Time' : `Log Time to ${activeTab2?.dayName || 'Selected Day'}`;
+    document.getElementById('logBtn').textContent = btnLabel;
   }
 
   function clearDay() {
@@ -553,8 +561,12 @@ saveEntries(entries, currentDayOffset);
 
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) logEntry(); });
 
-  // Start on today's tab
-  currentDayOffset = 0;
+  // Start on today's tab if it's a workday, otherwise default to most recent Friday
+  (function initDay() {
+    const tabs = getWorkWeekTabs();
+    const todayTab = tabs.find(t => t.isToday);
+    currentDayOffset = todayTab ? todayTab.offset : tabs[tabs.length - 1].offset;
+  })();
   render();
 </script>
 </body>

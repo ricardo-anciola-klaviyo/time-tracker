@@ -190,7 +190,7 @@
       <label>Comment / What you worked on</label>
       <textarea id="commentInput" placeholder="e.g. Reviewed architecture proposal, follow-up call re: integration"></textarea>
     </div>
-    <button class="log-btn" onclick="logEntry()">Log Time</button>
+    <button class="log-btn" id="logBtn" onclick="logEntry()">Log Time</button>
   </div>
 
   <!-- ENTRIES -->
@@ -345,17 +345,17 @@
     const mins = parseMinutes(timeStr);
     if (mins <= 0) { showToast('Invalid time format'); return; }
 
-    const entries = getEntries(0);
-    entries.unshift({ id: Date.now(), customer, mins, comment, category,
-      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-    saveEntries(entries, 0);
-
+ const entries = getEntries(currentDayOffset);
+entries.unshift({ id: Date.now(), customer, mins, comment, category,
+  time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+saveEntries(entries, currentDayOffset);
+    
     document.getElementById('customerInput').value = '';
     document.getElementById('timeInput').value = '';
     document.getElementById('commentInput').value = '';
     document.getElementById('customerInput').focus();
 
-    if (currentDayOffset !== 0) { currentDayOffset = 0; updateTabStyles(); }
+    
     render();
     showToast('✓ Logged ' + formatMinutes(mins) + ' for ' + customer);
   }

@@ -39,6 +39,13 @@
   .log-btn:hover { background: #0077ed; }
   .log-btn:active { background: #005bbf; }
 
+  /* Week nav */
+  .week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .week-nav-label { font-size: 13px; font-weight: 600; color: #555; }
+  .week-nav-btn { background: #f0f0f0; border: none; border-radius: 6px; padding: 5px 12px; font-size: 14px; cursor: pointer; font-family: inherit; color: #333; transition: background .12s; }
+  .week-nav-btn:hover { background: #ddd; }
+  .week-nav-btn:disabled { opacity: 0.35; cursor: default; }
+
   /* Day tabs */
   .day-tabs { display: flex; gap: 5px; margin-bottom: 16px; flex-wrap: wrap; }
   .day-tab {
@@ -199,7 +206,12 @@
       <div class="card-title" id="entriesTitle" style="margin-bottom:0">Today's Entries</div>
       <span class="total-badge" id="totalDisplay">0m</span>
     </div>
-    <div class="day-tabs" style="margin-top:12px" id="dayTabsContainer"></div>
+    <div class="week-nav" style="margin-top:12px">
+      <button class="week-nav-btn" id="prevWeekBtn" onclick="shiftWeek(-1)">← Prev</button>
+      <span class="week-nav-label" id="weekNavLabel"></span>
+      <button class="week-nav-btn" id="nextWeekBtn" onclick="shiftWeek(1)">Next →</button>
+    </div>
+    <div class="day-tabs" id="dayTabsContainer"></div>
     <div id="entriesList"><div class="empty-state">No entries yet — log your first task above.</div></div>
   </div>
 
@@ -252,27 +264,38 @@
 <script>
   const STORAGE_KEY = 'timetracker_entries_v3';
   let currentDayOffset = 0; // offset from today in days
+  let weekShift = 0; // 0 = current week, -1 = last week, etc.
 
   // ── Work week helpers ────────────────────────────────────────────────────
 
-  // Returns an array of {dayName, dateStr, offset} for Mon–Fri of the current week,
-  // where offset = days back from today (negative means future days this week).
+  // Returns Mon–Fri tabs for the week indicated by weekShift (0=this week, -1=last week)
   function getWorkWeekTabs() {
     const today = new Date();
-    const todayDow = today.getDay(); // 0=Sun,1=Mon,...,6=Sat
-    // Find Monday of this week (if today is Sun, go back 6 days; if Mon, 0, etc.)
+    const todayDow = today.getDay();
     const daysToMon = todayDow === 0 ? -6 : 1 - todayDow;
     const tabs = [];
     const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
     for (let i = 0; i < 5; i++) {
       const d = new Date(today);
-      d.setDate(today.getDate() + daysToMon + i);
-      const offset = Math.round((today - d) / 86400000); // positive = past
+      d.setDate(today.getDate() + daysToMon + i + (weekShift * 7));
+      const offset = Math.round((today - d) / 86400000);
       const dateStr = d.toLocaleDateString([], {month:'short', day:'numeric'});
-      const isoKey  = d.toISOString().slice(0,10);
-      tabs.push({ dayName: dayNames[i], dateStr, offset, isoKey, isToday: offset === 0 });
+      tabs.push({ dayName: dayNames[i], dateStr, offset, isToday: offset === 0 });
     }
     return tabs;
+  }
+
+  function shiftWeek(dir) {
+    // dir: -1 = go back, +1 = go forward (but not past current week)
+    const newShift = weekShift + dir;
+    if (newShift > 0) return; // can't go into future weeks
+    if (newShift < -2) return; // cap at 2 weeks back (within 14-day storage)
+    weekShift = newShift;
+    // When switching weeks, default to Friday of that week
+    const tabs = getWorkWeekTabs();
+    currentDayOffset = tabs[tabs.length - 1].offset;
+    renderTabs();
+    render();
   }
 
   function getKeyByOffset(offset) {
@@ -419,6 +442,12 @@
         <span class="tab-date">${t.dateStr}</span>
       </button>
     `).join('');
+
+    // Week nav label + button states
+    const weekLabel = weekShift === 0 ? 'This Week' : weekShift === -1 ? 'Last Week' : `${Math.abs(weekShift)} Weeks Ago`;
+    document.getElementById('weekNavLabel').textContent = weekLabel;
+    document.getElementById('nextWeekBtn').disabled = weekShift >= 0;
+    document.getElementById('prevWeekBtn').disabled = weekShift <= -2;
 
     // Update section titles
     const activeTab = tabs.find(t => t.offset === currentDayOffset);
